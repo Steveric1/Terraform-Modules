@@ -12,10 +12,11 @@ resource "aws_vpc" "my_vpc" {
 data "aws_availability_zones" "AZ" {}
 
 #create a public subnet inside in the vpc
-resource "aws_subnet" "public1" {
+resource "aws_subnet" "public" {
+  count                   = length(data.aws_availability_zones.AZ.names)
   vpc_id                  = aws_vpc.my_vpc.id
-  cidr_block              = var.public1_cidr
-  availability_zone       = data.aws_availability_zones.AZ.names[0]
+  cidr_block              = "10.1.${1 + count.index}.0/24"
+  availability_zone       = data.aws_availability_zones.AZ.names[count.index]
   map_public_ip_on_launch = true
 
   tags = {
@@ -23,41 +24,20 @@ resource "aws_subnet" "public1" {
   }
 }
 
-#create a public2 subnet inside vpc
-resource "aws_subnet" "public2" {
-  vpc_id                  = aws_vpc.my_vpc.id
-  cidr_block              = var.public2_cidr
-  availability_zone       = data.aws_availability_zones.AZ.names[1]
-  map_public_ip_on_launch = true
-
-  tags = {
-    Name = "public2-sub"
-  }
-}
 
 #create private1 subnet
-resource "aws_subnet" "private1" {
+resource "aws_subnet" "private" {
+  count                   = length(data.aws_availability_zones.AZ.names)
   vpc_id                  = aws_vpc.my_vpc.id
-  cidr_block              = var.private1_cidr
-  availability_zone       = data.aws_availability_zones.AZ.names[0]
+  cidr_block              = "10.1.${2 + count.index}.0/24"
+  availability_zone       = data.aws_availability_zones.AZ.names[count.index]
   map_public_ip_on_launch = false
 
   tags = {
-    Name = "private1-sub"
+    Name = "private-sub"
   }
 }
 
-#create private2 subnet
-resource "aws_subnet" "private2" {
-  vpc_id                  = aws_vpc.my_vpc.id
-  cidr_block              = var.private2_cidr
-  availability_zone       = data.aws_availability_zones.AZ.names[1]
-  map_public_ip_on_launch = false
-
-  tags = {
-    Name = "private2-sub"
-  }
-}
 
 #create a route table 
 resource "aws_route_table" "pub" {
@@ -74,13 +54,9 @@ resource "aws_route_table" "pub" {
 }
 
 #create a subnet association to seperate my public subnet from private subnet
-resource "aws_route_table_association" "pub1" {
-  subnet_id      = aws_subnet.public1.id
-  route_table_id = aws_route_table.pub.id
-}
-
-resource "aws_route_table_association" "pub2" {
-  subnet_id      = aws_subnet.public2.id
+resource "aws_route_table_association" "pub" {
+  count          = length(aws_subnet.public)
+  subnet_id      = aws_subnet.public[count.index].id
   route_table_id = aws_route_table.pub.id
 }
 
